@@ -1,179 +1,364 @@
 {% extends "base.html" %}
-{% block title %}Home{% endblock %}
-{% block header_title %}Overview Dashboard{% endblock %}
+
+{% block title %}
+{{ match.home_team.name }} vs {{ match.away_team.name }}
+{% endblock %}
+
+{% block header_title %}Match Analysis{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h2>Welcome to FIDS</h2>
-    <p class="subtitle">Football Intelligence Delon System — Your data-driven football analysis platform</p>
+    <h2>⚽ Match Details</h2>
 </div>
 
-<!-- Key Metrics -->
-<div class="stats-grid">
-    <div class="stat-card">
-        <div class="stat-icon blue">🏟️</div>
-        <div class="stat-info">
-            <div class="stat-value">{{ summary.total_matches }}</div>
-            <div class="stat-label">Total Matches</div>
-        </div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon green">👥</div>
-        <div class="stat-info">
-            <div class="stat-value">{{ summary.total_teams }}</div>
-            <div class="stat-label">Teams</div>
-        </div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon amber">⭐</div>
-        <div class="stat-info">
-            <div class="stat-value">{{ summary.total_players }}</div>
-            <div class="stat-label">Players</div>
-        </div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon purple">📊</div>
-        <div class="stat-info">
-            <div class="stat-value">{{ summary.league_table|length }}</div>
-            <div class="stat-label">League Standings</div>
-        </div>
-    </div>
-</div>
 
-{% if summary.total_matches == 0 %}
-<!-- Empty State -->
-<div class="card">
-    <div class="empty-state">
-        <div class="empty-icon">📁</div>
-        <h3>No Data Yet</h3>
-        <p>Upload your first football data file to get started with interactive analytics and automated insights.</p>
-        <a href="{{ url_for('main.upload') }}" class="btn btn-primary btn-lg">
-            📁 Upload Your First Dataset
+<!-- MATCH HEADER -->
+<div class="card mb-3">
+    <div class="match-meta">
+        {{ match.league or '' }} · {{ match.date }} · {{ match.venue or '' }}
+        <a href="/api/export/pdf/match/{{ match.id }}" class="btn btn-outline btn-sm">
+            📄 Download PDF
         </a>
     </div>
-</div>
-{% else %}
 
-<div class="grid-2 mb-3">
-    <!-- Recent Matches -->
-    <div class="card">
-        <div class="card-header">
-            <span class="card-title">🏟️ Recent Matches</span>
-            <a href="{{ url_for('main.matches') }}" class="btn btn-outline btn-sm">View All</a>
+    <div class="scoreboard-container">
+        <div class="team-side home">
+            <h2>{{ match.home_team.name }}</h2>
+            <div class="scorers">{{ match.home_goalscorers | default('', True) }}</div>
         </div>
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Match</th>
-                    <th>Score</th>
-                    <th>Date</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for m in summary.recent_matches %}
-                <tr style="cursor:pointer" onclick="location.href='/matches/{{ m.id }}'">
-                    <td>{{ m.home_team.name }} vs {{ m.away_team.name }}</td>
-                    <td><strong>{{ m.home_goals }} – {{ m.away_goals }}</strong></td>
-                    <td>{{ m.date }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
 
-    <!-- League Standings (Top 5) -->
-    <div class="card">
-        <div class="card-header">
-            <span class="card-title">🏆 Standings</span>
-            <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline btn-sm">Full Table</a>
+        <div class="score-center">
+            <h1>{{ match.home_goals }} - {{ match.away_goals }}</h1>
         </div>
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Team</th>
-                    <th>P</th>
-                    <th>W</th>
-                    <th>D</th>
-                    <th>L</th>
-                    <th>GD</th>
-                    <th>Pts</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for t in summary.league_table %}
-                <tr>
-                    <td>{{ t.position }}</td>
-                    <td><a href="/teams/{{ t.team_id }}">{{ t.team_name }}</a></td>
-                    <td>{{ t.played }}</td>
-                    <td>{{ t.wins }}</td>
-                    <td>{{ t.draws }}</td>
-                    <td>{{ t.losses }}</td>
-                    <td>{{ '+' if t.goal_difference >= 0 }}{{ t.goal_difference }}</td>
-                    <td><strong>{{ t.points }}</strong></td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+
+        <div class="team-side away">
+            <h2>{{ match.away_team.name }}</h2>
+            <div class="scorers">{{ match.away_goalscorers | default('', True) }}</div>
+        </div>
     </div>
 </div>
 
-<div class="grid-2">
-    <!-- Top Scorers -->
-    {% if summary.top_scorers %}
-    <div class="card">
-        <div class="card-header">
-            <span class="card-title">⚽ Top Scorers</span>
-        </div>
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Player</th>
-                    <th>Goals</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for p in summary.top_scorers %}
-                <tr style="cursor:pointer" onclick="location.href='/players/{{ p.player_id }}'">
-                    <td>{{ loop.index }}</td>
-                    <td>{{ p.name }}</td>
-                    <td><strong>{{ p.goals }}</strong></td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% endif %}
+<div class="match-tabs">
+    <button class="tab-btn active" data-tab="stats">📉 Stats Details</button>
+    <button class="tab-btn" data-tab="visual">📊 Visual Match Stats</button>
+    <button class="tab-btn" data-tab="analysis">📝 Match Analysis</button>
+</div>
 
-    <!-- Top Rated -->
-    {% if summary.top_rated %}
-    <div class="card">
-        <div class="card-header">
-            <span class="card-title">🌟 Highest Rated</span>
-        </div>
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Player</th>
-                    <th>Rating</th>
-                    <th>Matches</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for p in summary.top_rated %}
-                <tr style="cursor:pointer" onclick="location.href='/players/{{ p.player_id }}'">
-                    <td>{{ loop.index }}</td>
-                    <td>{{ p.name }}</td>
-                    <td><strong>{{ p.avg_rating }}</strong></td>
-                    <td>{{ p.matches }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+
+<!-- STATS DETAILS -->
+{% if data and data.metrics %}
+<div class="card mb-3 tab-content active" id="stats">
+    <div class="card-header">
+        <span class="card-title">📉 Stats Details</span>
     </div>
-    {% endif %}
+
+    <div class="card-body">
+        {% for key, metric in data.metrics.items() %}
+        <div class="metric-row">
+            <div class="metric-header">
+                <span class="{% if metric.dominant == 'home' %}winner{% endif %}">
+                    {{ metric.home }}{{ metric.unit }}
+                </span>
+
+                <span class="metric-label">{{ metric.label }}</span>
+
+                <span class="{% if metric.dominant == 'away' %}winner{% endif %}">
+                    {{ metric.away }}{{ metric.unit }}
+                </span>
+            </div>
+
+            <div class="metric-bar">
+                {% set total = metric.home + metric.away %}
+                {% if total > 0 %}
+                    <div class="home-bar" style="width:{{ (metric.home / total * 100) }}%"></div>
+                    <div class="away-bar" style="width:{{ (metric.away / total * 100) }}%"></div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
 </div>
 {% endif %}
+
+
+<!-- DONUT CHARTS -->
+<script id="donut-data" type="application/json">
+{{ charts_json | safe }}
+</script>
+
+<div class="card mb-3 tab-content" id="visual">
+    <div class="card-header">
+        <span class="card-title">📊 Visual Match Stats</span>
+    </div>
+
+    <div class="card-body">
+        <div id="donut-flex-container"></div>
+    </div>
+</div>
+
+
+<!-- AI ANALYSIS -->
+<div class="card mb-3 tab-content" id="analysis">
+    <div class="card-header">
+        <span class="card-title">📝 Match Analysis</span>
+    </div>
+    <div class="card-body">
+        <p class="analysis-text">{{ summary_text }}</p>
+    </div>
+</div>
+<style>
+.match-meta {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+    text-align: center;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.scoreboard-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 45px;
+    padding: 10px 0 25px 0;
+}
+
+.team-side {
+    flex: 1;
+}
+
+.team-side.home { text-align: right; }
+.team-side.away { text-align: left; }
+
+.team-side h2 {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.score-center h1 {
+    font-size: 3.5rem;
+    color: #667eea;
+    margin: 0;
+}
+
+.scorers {
+    font-size: 0.8rem;
+    color: #888;
+    font-style: italic;
+    min-height: 20px;
+}
+
+.metric-row {
+    margin-bottom: 18px;
+}
+
+.metric-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    margin-bottom: 6px;
+}
+
+.metric-label {
+    color: #aaa;
+    font-weight: 500;
+}
+
+.metric-bar {
+    display: flex;
+    height: 8px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: rgba(255,255,255,0.08);
+}
+
+.home-bar {
+    background: #667eea;
+}
+
+.away-bar {
+    background: #764ba2;
+}
+
+.winner {
+    color: #2ecc71;
+    font-weight: 700;
+}
+
+.analysis-text {
+    white-space: pre-line;
+    line-height: 1.7;
+}
+
+#donut-flex-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.donut-pair {
+    background: rgba(255,255,255,0.03);
+    border-radius: 16px;
+    padding: 15px;
+    overflow: hidden;
+}
+.donut-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+
+}
+
+.chart-box {
+    min-height: 280px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    text-align: center;
+}
+@media (max-width: 768px) {
+    .score-center h1 {
+        font-size: 2rem;
+    }
+
+    .team-side h2 {
+        font-size: 1.2rem;
+    }
+
+    .donut-grid {
+        grid-template-columns: 1fr;
+    }
+}
+.donut-title {
+    text-align: center;
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+    color: #fff;
+}
+</style>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const buttons = document.querySelectorAll('.tab-btn');
+    const contents = document.querySelectorAll('.tab-content');
+
+    buttons.forEach(button => {
+        button.addEventListener('click', function () {
+            const target = this.dataset.tab;
+
+            buttons.forEach(btn => btn.classList.remove('active'));
+            contents.forEach(tab => tab.classList.remove('active'));
+
+            this.classList.add('active');
+
+            const activeTab = document.getElementById(target);
+            if (activeTab) {
+                activeTab.classList.add('active');
+            }
+        });
+    });
+});
+
+document.addEventListener('DOMContentLoaded', function () {
+    try {
+        const holder = document.getElementById('donut-data');
+        const raw = holder.textContent || '{}';
+        const chartsData = JSON.parse(raw);
+
+        const container = document.getElementById('donut-flex-container');
+
+        if (!chartsData || Object.keys(chartsData).length === 0) {
+            container.innerHTML = '<p>Data tidak tersedia.</p>';
+            return;
+        }
+
+        container.innerHTML = '';
+
+        const groupedCharts = {};
+
+        // GROUP chart_0_home + chart_0_away
+        Object.entries(chartsData).forEach(([key, chartObj]) => {
+            const parts = key.split('_'); // chart_0_home
+            const index = parts[1];
+            const side = parts[2];
+
+            if (!groupedCharts[index]) {
+                groupedCharts[index] = {};
+            }
+
+            groupedCharts[index][side] = chartObj;
+        });
+
+        // BUILD DOM
+        Object.entries(groupedCharts).forEach(([index, pair]) => {
+            const pairWrapper = document.createElement('div');
+            pairWrapper.className = 'donut-pair';
+
+            // title metric
+            const title = document.createElement('h3');
+            title.className = 'donut-title';
+            title.innerText = pair.home?.label || pair.away?.label || `Metric ${index}`;
+            pairWrapper.appendChild(title);
+
+            const grid = document.createElement('div');
+            grid.className = 'donut-grid';
+
+            ['home', 'away'].forEach(side => {
+                if (!pair[side]) return;
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'chart-box';
+
+                const chartDiv = document.createElement('div');
+                chartDiv.className = 'chart-canvas';
+
+                const chartId = `chart-${index}-${side}`;
+                chartDiv.id = chartId;
+
+                const ratioDiv = document.createElement('div');
+                ratioDiv.className = 'chart-ratio';
+                ratioDiv.innerText = pair[side].text || '';
+
+                wrapper.appendChild(chartDiv);
+                wrapper.appendChild(ratioDiv);
+                grid.appendChild(wrapper);
+            });
+
+            pairWrapper.appendChild(grid);
+            container.appendChild(pairWrapper);
+        });
+
+        // RENDER PLOTLY
+        Object.entries(groupedCharts).forEach(([index, pair]) => {
+            ['home', 'away'].forEach(side => {
+                if (!pair[side]) return;
+
+                const chartId = `chart-${index}-${side}`;
+                const config = pair[side].figure;
+
+                config.layout.paper_bgcolor = 'rgba(0,0,0,0)';
+                config.layout.plot_bgcolor = 'rgba(0,0,0,0)';
+                config.layout.font = { color: '#ffffff' };
+
+                Plotly.newPlot(
+                    chartId,
+                    config.data,
+                    config.layout,
+                    {
+                        responsive: true,
+                        displayModeBar: false
+                    }
+                );
+            });
+        });
+
+    } catch (error) {
+        console.error('Chart render error:', error);
+    }
+});
+</script>
 {% endblock %}
