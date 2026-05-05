@@ -20,16 +20,20 @@ MATCH_COLUMN_MAP = {
     # Goals
     'home_goals': 'home_goals', 'home_score': 'home_goals', 'hg': 'home_goals', 'fthg': 'home_goals',
     'away_goals': 'away_goals', 'away_score': 'away_goals', 'ag': 'away_goals', 'ftag': 'away_goals',
+    # scorers
+    'home_goalscorers': 'home_goalscorers', 'pencetak_gol_kandang': 'home_goalscorers', 'home_scorers': 'home_goalscorers',
+    'away_goalscorers': 'away_goalscorers', 'pencetak_gol_tamu': 'away_goalscorers', 'away_scorers': 'away_goalscorers',
     # League/Season
     'league': 'league', 'liga': 'league', 'competition': 'league',
     'season': 'season', 'musim': 'season',
     'venue': 'venue', 'stadium': 'venue', 'stadion': 'venue',
     'referee': 'referee', 'wasit': 'referee',
-    # Stats
+    # Stats Utama
     'home_possession': 'home_possession', 'away_possession': 'away_possession',
     'home_shots': 'home_total_shots', 'home_total_shots': 'home_total_shots',
     'away_shots': 'away_total_shots', 'away_total_shots': 'away_total_shots',
     'home_shots_on_target': 'home_shots_on_target', 'away_shots_on_target': 'away_shots_on_target',
+    'home_shots_off_target': 'home_shots_off_target', 'away_shots_off_target': 'away_shots_off_target',
     'home_passes': 'home_total_passes', 'home_total_passes': 'home_total_passes',
     'away_passes': 'away_total_passes', 'away_total_passes': 'away_total_passes',
     'home_pass_accuracy': 'home_pass_accuracy', 'away_pass_accuracy': 'away_pass_accuracy',
@@ -42,8 +46,37 @@ MATCH_COLUMN_MAP = {
     'home_interceptions': 'home_interceptions', 'away_interceptions': 'away_interceptions',
     'home_offsides': 'home_offsides', 'away_offsides': 'away_offsides',
     'home_goalkeeper_saves': 'home_goalkeeper_saves', 'away_goalkeeper_saves': 'away_goalkeeper_saves',
-}
-
+    
+    # Advanced Passing & Movement
+    'home_long_balls': 'home_long_balls', 'away_long_balls': 'away_long_balls',
+    'home_long_balls_success': 'home_long_balls_success', 'away_long_balls_success': 'away_long_balls_success',
+    'home_passes_final_third_succes': 'home_passes_final_third_succes', 'away_passes_final_third_succes': 'away_passes_final_third_succes',
+    'home_passes_final_third': 'home_passes_final_third', 'away_passes_final_third': 'away_passes_final_third',
+    'home_passes_into_penalty_area': 'home_passes_into_penalty_area', 'away_passes_into_penalty_area': 'away_passes_into_penalty_area',
+    'home_throw_ins': 'home_throw_ins', 'away_throw_ins': 'away_throw_ins', 
+    'home_through_balls': 'home_through_balls', 'away_through_balls': 'away_through_balls',
+    'home_final_third_entries': 'home_final_third_entries', 'away_final_third_entries': 'away_final_third_entries',
+    'home_crosses': 'home_crosses', 'away_crosses': 'away_crosses',
+    'home_crosses_success': 'home_crosses_success', 'away_crosses_success': 'away_crosses_success',
+    
+    # Dribbling & Box Activity
+    'home_dribbles_attempted': 'home_dribbles_attempted', 'away_dribbles_attempted': 'away_dribbles_attempted',
+    'home_dribbles_succeeded': 'home_dribbles_succeeded', 'away_dribbles_succeeded': 'away_dribbles_succeeded',
+    'home_blocks': 'home_blocks', 'away_blocks': 'away_blocks',
+    'home_shots_inside_box': 'home_shots_inside_box', 'away_shots_inside_box': 'away_shots_inside_box',
+    'home_shots_outside_box': 'home_shots_outside_box', 'away_shots_outside_box': 'away_shots_outside_box',
+    'home_big_chances_scored': 'home_big_chances_scored', 'away_big_chances_scored': 'away_big_chances_scored',
+    'home_big_chances_missed': 'home_big_chances_missed', 'away_big_chances_missed': 'away_big_chances_missed',
+    'home_hit_woodwork': 'home_hit_woodwork', 'away_hit_woodwork': 'away_hit_woodwork', 
+    'home_tackles_success': 'home_tackles_success', 'away_tackles_success': 'away_tackles_success',
+    'home_tackles_total': 'home_tackles_total', 'away_tackles_total': 'away_tackles_total',
+    'home_clearances': 'home_clearances', 'away_clearances': 'away_clearances',
+    'home_duels_won': 'home_duels_won', 'away_duels_won': 'away_duels_won',
+    'home_duels_total': 'home_duels_total', 'away_duels_total': 'away_duels_total',
+    'home_takles': 'home_takles', 'away_takles': 'away_takles',
+    
+    }
+    
 PLAYER_COLUMN_MAP = {
     'name': 'name', 'player_name': 'name', 'nama': 'name', 'player': 'name',
     'team': 'team', 'team_name': 'team', 'tim': 'team', 'club': 'team',
@@ -275,6 +308,11 @@ def process_matches_file(filepath, filename):
 
             if existing:
                 match = existing
+            # Update pencetak gol jika data baru tersedia
+                if not pd.isna(row.get('home_goalscorers')):
+                    match.home_goalscorers = str(row.get('home_goalscorers'))
+                if not pd.isna(row.get('away_goalscorers')):
+                    match.away_goalscorers = str(row.get('away_goalscorers'))
             else:
                 match = Match(
                     home_team_id=home_team.id,
@@ -286,11 +324,21 @@ def process_matches_file(filepath, filename):
                     season=str(row.get('season', '')) if not pd.isna(row.get('season', '')) else None,
                     venue=str(row.get('venue', '')) if not pd.isna(row.get('venue', '')) else None,
                     referee=str(row.get('referee', '')) if not pd.isna(row.get('referee', '')) else None,
+                    # WAJIB ADA: Masukkan ke tabel matches
+                    home_goalscorers=str(row.get('home_goalscorers', '')) if not pd.isna(row.get('home_goalscorers')) else None,
+                    away_goalscorers=str(row.get('away_goalscorers', '')) if not pd.isna(row.get('away_goalscorers')) else None,
                 )
                 db.session.add(match)
-                db.session.flush()
+                db.session.flush() # Ambil ID match untuk proses selanjutnya
                 result['matches_created'] += 1
+            validation_errors = validate_match_row(row, idx + 1)
 
+            if validation_errors:
+                result['rows_failed'] += 1
+                result['errors'].append(
+                    f"Row {idx+1}: " + "; ".join(validation_errors)
+                )
+                continue
             # Create match stats for home team
             _create_match_stats(match.id, home_team.id, row, 'home')
             # Create match stats for away team
@@ -300,9 +348,10 @@ def process_matches_file(filepath, filename):
 
         except Exception as e:
             result['rows_failed'] += 1
+            # Tambahkan baris print di bawah ini agar terlihat di terminal
+            print(f"!!! ERROR DATABASE: {str(e)}") 
             result['errors'].append(f'Row {idx + 1}: {str(e)}')
             continue
-
     try:
         db.session.commit()
     except Exception as e:
@@ -326,25 +375,59 @@ def _create_match_stats(match_id, team_id, row, side):
         stats = MatchStats(match_id=match_id, team_id=team_id)
 
     prefix = f'{side}_'
+    
+    # Goals & Possession
     stats.goals = safe_int(row.get(f'{prefix}goals', row.get('home_goals' if side == 'home' else 'away_goals', 0)))
     stats.possession = safe_float(row.get(f'{prefix}possession', 0))
+    
+    # Shooting
     stats.total_shots = safe_int(row.get(f'{prefix}total_shots', 0))
     stats.shots_on_target = safe_int(row.get(f'{prefix}shots_on_target', 0))
+    stats.shots_off_target = safe_int(row.get(f'{prefix}shots_off_target', 0))
+    stats.blocked_shots = safe_int(row.get(f'{prefix}blocked_shots', 0)) # Tambahkan ini
+    stats.shots_inside_box = safe_int(row.get(f'{prefix}shots_inside_box', 0))
+    stats.shots_outside_box = safe_int(row.get(f'{prefix}shots_outside_box', 0))
+    stats.hit_woodwork = safe_int(row.get(f'{prefix}hit_woodwork', 0))
+    stats.big_chances_scored = safe_int(row.get(f'{prefix}big_chances_scored', 0))
+    stats.big_chances_missed = safe_int(row.get(f'{prefix}big_chances_missed', 0))
+
+    # Passing & Playmaking
     stats.total_passes = safe_int(row.get(f'{prefix}total_passes', 0))
     stats.pass_accuracy = safe_float(row.get(f'{prefix}pass_accuracy', 0))
+    stats.key_passes = safe_int(row.get(f'{prefix}key_passes', 0)) # Tambahkan ini
+    stats.passes_into_final_third = safe_int(row.get(f'{prefix}passes_into_final_third', 0))
+    stats.passes_final_third_success = safe_int(row.get(f'{prefix}passes_final_third_success', 0))
+    stats.passes_into_penalty_area = safe_int(row.get(f'{prefix}passes_into_penalty_area', 0))
+    stats.through_balls = safe_int(row.get(f'{prefix}through_balls', 0))
+    stats.crosses = safe_int(row.get(f'{prefix}crosses', 0))
+    stats.crosses_success = safe_int(row.get(f'{prefix}crosses_success', 0))
+    stats.long_balls = safe_int(row.get(f'{prefix}long_balls', 0))
+    stats.long_balls_success = safe_int(row.get(f'{prefix}long_balls_success', 0))
+    stats.final_third_entries = safe_int(row.get(f'{prefix}final_third_entries', 0))
+    stats.throw_ins = safe_int(row.get(f'{prefix}throw_ins', 0))
+
+    # Defense & Discipline
+    stats.tackles_success = safe_int(row.get(f'{prefix}tackles_success', 0))
+    stats.tackles_total = safe_int(row.get(f'{prefix}tackles_total', 0))
+    stats.duels_won = safe_int(row.get(f'{prefix}duels_won', 0))
+    stats.duels_total = safe_int(row.get(f'{prefix}duels_total', 0))
+    stats.clearances = safe_int(row.get(f'{prefix}clearances', 0))
+    stats.interceptions = safe_int(row.get(f'{prefix}interceptions', 0))
+    stats.blocks = safe_int(row.get(f'{prefix}blocks', 0)) # Ini block tembakan lawan oleh bek
+    stats.goalkeeper_saves = safe_int(row.get(f'{prefix}goalkeeper_saves', 0))
     stats.corners = safe_int(row.get(f'{prefix}corners', 0))
     stats.fouls = safe_int(row.get(f'{prefix}fouls', 0))
+    stats.offsides = safe_int(row.get(f'{prefix}offsides', 0))
     stats.yellow_cards = safe_int(row.get(f'{prefix}yellow_cards', 0))
     stats.red_cards = safe_int(row.get(f'{prefix}red_cards', 0))
-    stats.xg = safe_float(row.get(f'{prefix}xg', 0))
     stats.tackles = safe_int(row.get(f'{prefix}tackles', 0))
-    stats.interceptions = safe_int(row.get(f'{prefix}interceptions', 0))
-    stats.offsides = safe_int(row.get(f'{prefix}offsides', 0))
-    stats.goalkeeper_saves = safe_int(row.get(f'{prefix}goalkeeper_saves', 0))
+    # Skill & Advanced
+    stats.dribbles_attempted = safe_int(row.get(f'{prefix}dribbles_attempted', 0))
+    stats.dribbles_succeeded = safe_int(row.get(f'{prefix}dribbles_succeeded', 0))
+    stats.xg = safe_float(row.get(f'{prefix}xg', 0))
 
     if not existing:
         db.session.add(stats)
-
 
 def process_players_file(filepath, filename):
     """Process a player stats CSV/Excel file and insert into database."""
@@ -476,3 +559,49 @@ def load_csv(filepath):
         raise Exception(f"Upload failed: {result['errors']}")
 
     return result
+
+def validate_match_row(row, idx):
+    errors = []
+
+    for side in ['home', 'away']:
+        prefix = f'{side}_'
+
+        total_shots = safe_int(row.get(f'{prefix}total_shots', 0))
+        on_target = safe_int(row.get(f'{prefix}shots_on_target', 0))
+        off_target = safe_int(row.get(f'{prefix}shots_off_target', 0))
+        blocked = safe_int(row.get(f'{prefix}blocked_shots', 0))
+
+        # total shots consistency
+        if on_target + off_target + blocked > total_shots:
+            errors.append(
+                f"{side}: shots breakdown ({on_target}+{off_target}+{blocked}) "
+                f"> total_shots ({total_shots})"
+            )
+
+        # pass accuracy
+        pass_acc = safe_float(row.get(f'{prefix}pass_accuracy', 0))
+        if pass_acc < 0 or pass_acc > 100:
+            errors.append(f"{side}: pass_accuracy must be 0-100")
+
+        # possession
+        possession = safe_float(row.get(f'{prefix}possession', 0))
+        if possession < 0 or possession > 100:
+            errors.append(f"{side}: possession must be 0-100")
+
+        # dribbles
+        drib_att = safe_int(row.get(f'{prefix}dribbles_attempted', 0))
+        drib_suc = safe_int(row.get(f'{prefix}dribbles_succeeded', 0))
+        if drib_suc > drib_att:
+            errors.append(
+                f"{side}: dribbles_succeeded ({drib_suc}) > attempted ({drib_att})"
+            )
+
+        # big chances
+        bc_scored = safe_int(row.get(f'{prefix}big_chances_scored', 0))
+        goals = safe_int(row.get(f'{prefix}goals', row.get(f'{side}_goals', 0)))
+        if bc_scored > goals + 5:
+            errors.append(
+                f"{side}: suspicious big_chances_scored ({bc_scored})"
+            )
+
+    return errors

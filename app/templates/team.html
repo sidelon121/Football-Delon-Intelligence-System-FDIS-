@@ -83,7 +83,7 @@
     </div>
     <div class="mt-2" style="font-size:0.85rem; color:var(--text-secondary);">
         Possession: {{ overview.avg_possession }}% · Pass Accuracy: {{ overview.avg_pass_accuracy }}% ·
-        Avg Shots: {{ overview.avg_shots }} · Avg Tackles: {{ overview.avg_tackles }}
+        Avg Shots: {{ overview.avg_shots }} · Avg Tackles: {{ overview.avg_tackles_total }}
     </div>
 </div>
 
@@ -112,18 +112,39 @@
 {% endif %}
 
 <!-- Automated Analysis -->
-<div class="card mb-3">
+<div class="card">
     <div class="card-header">
-        <span class="card-title">📝 Automated Analysis</span>
-        <div class="flex gap-1">
-            <a href="/api/export/pdf/team/{{ overview.team.id }}" class="btn btn-outline btn-sm">📄 PDF</a>
-            <a href="/api/export/pptx/team/{{ overview.team.id }}" class="btn btn-outline btn-sm">📊 PPTX</a>
-        </div>
+        <span class="card-title">📝 Team Analysis</span>
+        <a href="/api/export/pdf/team/{{ overview.team.id }}"
+            class="btn btn-outline btn-sm"
+            style="float:right;">
+            📄 Download PDF
+        </a>
     </div>
+
     <div class="analysis-text">
-        {% for paragraph in analysis_text.split('\n\n') %}
-        <p>{{ paragraph | safe }}</p>
-        {% endfor %}
+        <p style="white-space: pre-line;">
+            {{ analysis_text }}
+        </p>
     </div>
 </div>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll(".chart-container").forEach(el => {
+        try {
+            const chartData = JSON.parse(el.dataset.chart);
+
+            if (chartData.data && chartData.layout) {
+                Plotly.newPlot(el, chartData.data, chartData.layout);
+            } else {
+                console.warn("Chart format salah:", chartData);
+            }
+
+        } catch (err) {
+            console.error("Chart error:", err);
+        }
+    });
+});
+</script>
+
 {% endblock %}

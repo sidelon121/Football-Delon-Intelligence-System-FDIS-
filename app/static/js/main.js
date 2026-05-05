@@ -28,7 +28,7 @@ function showToast(message, type = 'info') {
 // ─── Plotly Chart Rendering ──────────────────────────────────────
 function renderChart(elementId, chartData) {
     if (!chartData || !document.getElementById(elementId)) return;
-    
+
     const config = {
         responsive: true,
         displayModeBar: false,
@@ -123,28 +123,28 @@ function uploadFile() {
         method: 'POST',
         body: formData,
     })
-    .then(res => res.json())
-    .then(data => {
-        if (progressFill) progressFill.style.width = '100%';
-        
-        if (data.success) {
-            showToast(data.message || 'Upload successful!', 'success');
-            setTimeout(() => location.reload(), 1500);
-        } else {
-            showToast(data.error || 'Upload failed', 'error');
-        }
-    })
-    .catch(err => {
-        showToast('Upload failed: ' + err.message, 'error');
-    })
-    .finally(() => {
-        if (progressFill) {
-            setTimeout(() => {
-                if (progressBar) progressBar.classList.add('hidden');
-                progressFill.style.width = '0%';
-            }, 2000);
-        }
-    });
+        .then(res => res.json())
+        .then(data => {
+            if (progressFill) progressFill.style.width = '100%';
+
+            if (data.success) {
+                showToast(data.message || 'Upload successful!', 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast(data.error || 'Upload failed', 'error');
+            }
+        })
+        .catch(err => {
+            showToast('Upload failed: ' + err.message, 'error');
+        })
+        .finally(() => {
+            if (progressFill) {
+                setTimeout(() => {
+                    if (progressBar) progressBar.classList.add('hidden');
+                    progressFill.style.width = '0%';
+                }, 2000);
+            }
+        });
 }
 
 // ─── Manual Entry Form ───────────────────────────────────────────
@@ -160,17 +160,17 @@ function submitManualEntry() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
     })
-    .then(res => res.json())
-    .then(result => {
-        if (result.success) {
-            showToast('Match data saved successfully!', 'success');
-            form.reset();
-            setTimeout(() => location.reload(), 1500);
-        } else {
-            showToast(result.errors?.join(', ') || 'Failed to save', 'error');
-        }
-    })
-    .catch(err => showToast('Error: ' + err.message, 'error'));
+        .then(res => res.json())
+        .then(result => {
+            if (result.success) {
+                showToast('Match data saved successfully!', 'success');
+                form.reset();
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast(result.errors?.join(', ') || 'Failed to save', 'error');
+            }
+        })
+        .catch(err => showToast('Error: ' + err.message, 'error'));
 }
 
 // ─── Comparison Tool ─────────────────────────────────────────────
@@ -301,7 +301,7 @@ function markdownToHtml(text) {
 async function fetchWithLoading(url, elementId) {
     const el = document.getElementById(elementId);
     if (el) el.innerHTML = '<div class="flex-center" style="padding:40px"><div class="spinner"></div></div>';
-    
+
     try {
         const res = await fetch(url);
         return await res.json();
@@ -333,3 +333,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
+fetch(`/analysis/match/${matchId}`)
+    .then(res => res.json())
+    .then(data => {
+        console.log(data); // 🔥 lihat ini di console browser
+        document.getElementById("match-summary").innerText = data.analysis;
+    });

@@ -15,40 +15,41 @@
     <button class="tab" data-tab="tab-api">API Import</button>
 </div>
 
-<!-- File Upload Tab -->
-<div id="tab-file" class="tab-content active">
+
+</script><div id="tab-file" class="tab-content active">
     <div class="card mb-3">
-        <div class="card-header">
-            <span class="card-title">Upload CSV or Excel File</span>
-            <div class="flex gap-1">
-                <select id="data-type" class="form-select" style="width:auto">
-                    <option value="auto">Auto-Detect Type</option>
-                    <option value="matches">Match Data</option>
-                    <option value="players">Player Data</option>
-                </select>
+        <form action="{{ url_for('api.upload_file') }}" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="source_type" value="file">
+            
+            <div class="card-header">
+                <span class="card-title">Upload CSV or Excel File</span>
+                <div class="flex gap-1">
+                    <select name="data_type" class="form-select" style="width:auto">
+                        <option value="auto">Auto-Detect Type</option>
+                        <option value="matches">Match Data</option>
+                        <option value="players">Player Data</option>
+                    </select>
+                </div>
             </div>
-        </div>
 
-        <input type="file" id="file-input" accept=".csv,.xlsx,.xls" style="display:none">
+            <input type="file" name="file" id="file-input" accept=".csv,.xlsx,.xls" style="display:none" onchange="displayFileName(this)">
 
-        <div id="upload-zone" class="upload-zone">
-            <div class="upload-icon">📤</div>
-            <h3>Drop your file here or click to browse</h3>
-            <p>Supports CSV, XLSX, XLS — Max 16 MB</p>
-        </div>
-
-        <div id="upload-progress" class="progress-bar hidden mt-2">
-            <div id="progress-fill" class="progress-fill" style="width:0%"></div>
-        </div>
-
-        <div class="mt-2 flex-between">
-            <div>
-                <a href="/static/uploads/sample_template.csv" class="btn btn-outline btn-sm" download>📥 Download Template</a>
+            <div id="upload-zone" class="upload-zone" onclick="document.getElementById('file-input').click()" style="cursor: pointer;">
+                <div class="upload-icon">📤</div>
+                <h3>Drop your file here or click to browse</h3>
+                <p>Supports CSV, XLSX, XLS — Max 16 MB</p>
+                <p id="file-name-display" style="color: #2ecc71; font-weight: bold; margin-top: 10px;"></p>
             </div>
-            <button id="upload-btn" class="btn btn-accent hidden" onclick="uploadFile()">
-                🚀 Upload & Process
-            </button>
-        </div>
+
+            <div class="mt-2 flex-between">
+                <div>
+                    <a href="/static/uploads/sample_template.csv" class="btn btn-outline btn-sm" download>📥 Download Template</a>
+                </div>
+                <button type="submit" id="upload-btn" class="btn btn-primary">
+                    🚀 Upload & Process
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -203,38 +204,139 @@
     </table>
 </div>
 {% endif %}
+<style>
+.tabs {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+}
 
-{% endblock %}
+.tab {
+    padding: 12px 18px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    background: #1f2937;
+    color: #9ca3af;
+    font-weight: 600;
+    transition: all 0.25s ease;
+}
 
-{% block scripts %}
+.tab:hover {
+    background: #374151;
+    color: white;
+}
+
+.tab.active {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+</style>
 <script>
-function fetchFromAPI() {
-    const leagueId = document.getElementById('api-league').value;
-    const season = document.getElementById('api-season').value;
-    const last = document.getElementById('api-last').value;
+document.addEventListener("DOMContentLoaded", function () {
 
-    if (!leagueId || !season) {
-        showToast('League ID and Season are required', 'warning');
-        return;
+    // =========================
+    // TAB SWITCHER
+    // =========================
+    const tabs = document.querySelectorAll(".tab");
+    const tabContents = document.querySelectorAll(".tab-content");
+
+    tabs.forEach(tab => {
+        tab.addEventListener("click", function () {
+            const target = this.getAttribute("data-tab");
+
+            // reset active state
+            tabs.forEach(btn => btn.classList.remove("active"));
+            tabContents.forEach(content => {
+                content.classList.remove("active");
+                content.style.display = "none";
+            });
+
+            // activate current
+            this.classList.add("active");
+
+            const activeContent = document.getElementById(target);
+            if (activeContent) {
+                activeContent.classList.add("active");
+                activeContent.style.display = "block";
+            }
+        });
+    });
+
+    // init first tab
+    tabContents.forEach(content => content.style.display = "none");
+
+    const firstActive = document.querySelector(".tab-content.active");
+    if (firstActive) {
+        firstActive.style.display = "block";
     }
 
-    showToast('Fetching data from API-Football...', 'info');
 
-    fetch('/api/fetch-api', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ league_id: leagueId, season: season, last: last || null }),
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            showToast(`Imported ${data.matches_imported} matches!`, 'success');
-            setTimeout(() => location.reload(), 1500);
+    // =========================
+    // FILE NAME DISPLAY
+    // =========================
+    window.displayFileName = function(input) {
+        const display = document.getElementById("file-name-display");
+
+        if (input.files && input.files.length > 0) {
+            display.textContent = "Selected: " + input.files[0].name;
         } else {
-            showToast(data.errors?.[0] || 'API fetch failed', 'error');
+            display.textContent = "";
         }
-    })
-    .catch(err => showToast('Error: ' + err.message, 'error'));
-}
+    };
+
+
+    // =========================
+    // API FETCH
+    // =========================
+    window.fetchFromAPI = function() {
+        const leagueId = document.getElementById("api-league").value;
+        const season = document.getElementById("api-season").value;
+        const last = document.getElementById("api-last").value;
+
+        if (!leagueId || !season) {
+            showToast("League ID and Season are required", "warning");
+            return;
+        }
+
+        showToast("Fetching data from API-Football...", "info");
+
+        fetch("/api/fetch-api", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                league_id: leagueId,
+                season: season,
+                last: last || null
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast(`Imported ${data.matches_imported} matches!`, "success");
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast(
+                    data.errors?.[0] || "API fetch failed",
+                    "error"
+                );
+            }
+        })
+        .catch(error => {
+            showToast("Error: " + error.message, "error");
+        });
+    };
+
+});
 </script>
 {% endblock %}

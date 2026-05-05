@@ -1,14 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Football Data Intelligence System — Transform football data into interactive insights">
-    <title>{% block title %}FDIS{% endblock %} — Football Data Intelligence System</title>
+    <meta name="description"
+        content="Football Data Intelligence System — Transform football data into interactive insights">
+    <title>{% block title %}FIDS{% endblock %} — Football Intelligence Delon System</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚽</text></svg>">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚽</text></svg>">
     {% block head %}{% endblock %}
 </head>
+
 <body>
     <div class="app-layout">
         <!-- Sidebar Navigation -->
@@ -16,38 +20,47 @@
             <div class="sidebar-brand">
                 <div class="brand-icon">⚽</div>
                 <div>
-                    <h1>FDIS</h1>
-                    <div class="brand-sub">Football Intelligence</div>
+                    <h1>FIDS</h1>
+                    <div class="brand-sub">Football Intelligence
+                        by SIDELON121
+                    </div>
                 </div>
             </div>
             <nav class="sidebar-nav">
                 <div class="nav-section">
                     <div class="nav-section-title">Overview</div>
-                    <a href="{{ url_for('main.index') }}" class="nav-link {% if request.endpoint == 'main.index' %}active{% endif %}">
+                    <a href="{{ url_for('main.index') }}"
+                        class="nav-link {% if request.endpoint == 'main.index' %}active{% endif %}">
                         <span class="nav-icon">📊</span> Dashboard
                     </a>
-                    <a href="{{ url_for('main.dashboard') }}" class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}">
+                    <a href="{{ url_for('main.dashboard') }}"
+                        class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}">
                         <span class="nav-icon">📈</span> Analytics
                     </a>
                 </div>
                 <div class="nav-section">
                     <div class="nav-section-title">Data</div>
-                    <a href="{{ url_for('main.upload') }}" class="nav-link {% if request.endpoint == 'main.upload' %}active{% endif %}">
+                    <a href="{{ url_for('main.upload') }}"
+                        class="nav-link {% if request.endpoint == 'main.upload' %}active{% endif %}">
                         <span class="nav-icon">📁</span> Upload Data
                     </a>
-                    <a href="{{ url_for('main.matches') }}" class="nav-link {% if request.endpoint in ['main.matches', 'main.match_detail'] %}active{% endif %}">
+                    <a href="{{ url_for('main.matches') }}"
+                        class="nav-link {% if request.endpoint in ['main.matches', 'main.match_detail'] %}active{% endif %}">
                         <span class="nav-icon">🏟️</span> Matches
                     </a>
-                    <a href="{{ url_for('main.teams') }}" class="nav-link {% if request.endpoint in ['main.teams', 'main.team_detail'] %}active{% endif %}">
+                    <a href="{{ url_for('main.teams') }}"
+                        class="nav-link {% if request.endpoint in ['main.teams', 'main.team_detail'] %}active{% endif %}">
                         <span class="nav-icon">👥</span> Teams
                     </a>
-                    <a href="{{ url_for('main.players') }}" class="nav-link {% if request.endpoint in ['main.players', 'main.player_detail'] %}active{% endif %}">
+                    <a href="{{ url_for('main.players') }}"
+                        class="nav-link {% if request.endpoint in ['main.players', 'main.player_detail'] %}active{% endif %}">
                         <span class="nav-icon">⭐</span> Players
                     </a>
                 </div>
                 <div class="nav-section">
                     <div class="nav-section-title">Tools</div>
-                    <a href="{{ url_for('main.compare') }}" class="nav-link {% if request.endpoint == 'main.compare' %}active{% endif %}">
+                    <a href="{{ url_for('main.compare') }}"
+                        class="nav-link {% if request.endpoint == 'main.compare' %}active{% endif %}">
                         <span class="nav-icon">⚖️</span> Compare
                     </a>
                 </div>
@@ -58,14 +71,26 @@
         <main class="main-content">
             <!-- Header -->
             <header class="header">
-                <div style="display:flex;align-items:center;gap:12px">
+                <div style="display:flex;align-items:center;gap:17px">
                     <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
                     <span class="header-title">{% block header_title %}Dashboard{% endblock %}</span>
                 </div>
                 <div class="header-actions">
-                    <a href="{{ url_for('main.upload') }}" class="btn btn-primary btn-sm">
-                        📁 Upload Data
-                    </a>
+                    {% if current_user.is_authenticated %}
+                    <div class="user-profile">
+                        {% if current_user.avatar_url %}
+                        <img src="{{ current_user.avatar_url }}" alt="{{ current_user.name }}" class="user-avatar">
+                        {% else %}
+                        <div class="user-avatar-placeholder">{{ current_user.name[0] if current_user.name else 'U' }}
+                        </div>
+                        {% endif %}
+                        <span class="user-name">{{ current_user.name or current_user.email }}</span>
+                        <a href="{{ url_for('auth.logout') }}" class="btn btn-outline btn-sm">Logout</a>
+                    </div>
+                    {% else %}
+                    <a href="{{ url_for('auth.login') }}" class="btn btn-outline btn-sm">Login</a>
+                    <a href="{{ url_for('auth.register') }}" class="btn btn-accent btn-sm">Register</a>
+                    {% endif %}
                 </div>
             </header>
 
@@ -76,27 +101,55 @@
         </main>
     </div>
 
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-    {% block scripts %}{% endblock %}
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<div id="chart-data-holder" data-charts='{{ charts_json | safe }}' style="display:none;"></div>
 
-    <script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const chartContainers = document.querySelectorAll(".chart-container");
+<div id="donut-charts-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+    </div>
 
-        chartContainers.forEach(container => {
-            const chartData = container.getAttribute("data-chart");
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"</script>
 
-            if (chartData) {
-                try {
-                    const parsed = JSON.parse(chartData);
-                    Plotly.newPlot(container, parsed.data, parsed.layout);
-                } catch (e) {
-                    console.error("Chart render error:", e);
-                }
-            }
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    try {
+        const holder = document.getElementById('donut-data');
+        const rawData = holder.getAttribute('data-visual');
+        const chartsData = JSON.parse(rawData);
+        const container = document.getElementById('donut-container');
+
+        if (!chartsData || Object.keys(chartsData).length === 0) {
+            container.innerHTML = "<p class='text-center'>Data visual tidak tersedia.</p>";
+            return;
+        }
+
+        // Bersihkan kontainer sebelum menggambar
+        container.innerHTML = '';
+
+        Object.entries(chartsData).forEach(([key, config]) => {
+            // BUAT DIV BARU UNTUK SETIAP GRAFIK
+            const divId = `chart-id-${key}`;
+            const chartDiv = document.createElement('div');
+            chartDiv.id = divId;
+            chartDiv.style.height = "350px"; // Kunci agar tidak tumpang tindih
+            
+            // Masukkan div ke dalam grid container
+            container.appendChild(chartDiv);
+
+            // Styling layout agar clean
+            config.layout.paper_bgcolor = 'rgba(0,0,0,0)';
+            config.layout.plot_bgcolor = 'rgba(0,0,0,0)';
+            config.layout.font = { color: '#fff' };
+            config.layout.margin = { t: 40, b: 20, l: 10, r: 10 };
+            
+            // Render ke div yang BARU saja kita buat di atas
+            Plotly.newPlot(divId, config.data, config.layout, {responsive: true, displayModeBar: false});
         });
-    });
-    </script>
+    } catch (err) {
+        console.error("Gagal merender grafik:", err);
+        document.getElementById('donut-charts-container').innerHTML = 
+            "<p class='text-danger'>Terjadi kesalahan sistem saat memuat grafik.</p>";
+    }
+});
+</script>
 </body>
+
 </html>

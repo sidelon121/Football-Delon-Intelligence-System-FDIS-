@@ -4,8 +4,8 @@
 
 {% block content %}
 <div class="page-header">
-    <h2>Welcome to FDIS</h2>
-    <p class="subtitle">Football Data Intelligence System — Your data-driven football analysis platform</p>
+    <h2>Welcome to FIDS</h2>
+    <p class="subtitle">Football Intelligence Delon System — Your data-driven football analysis platform</p>
 </div>
 
 <!-- Key Metrics -->
@@ -127,7 +127,11 @@
         </div>
         <table class="data-table">
             <thead>
-                <tr><th>#</th><th>Player</th><th>Goals</th></tr>
+                <tr>
+                    <th>#</th>
+                    <th>Player</th>
+                    <th>Goals</th>
+                </tr>
             </thead>
             <tbody>
                 {% for p in summary.top_scorers %}
@@ -150,7 +154,12 @@
         </div>
         <table class="data-table">
             <thead>
-                <tr><th>#</th><th>Player</th><th>Rating</th><th>Matches</th></tr>
+                <tr>
+                    <th>#</th>
+                    <th>Player</th>
+                    <th>Rating</th>
+                    <th>Matches</th>
+                </tr>
             </thead>
             <tbody>
                 {% for p in summary.top_rated %}

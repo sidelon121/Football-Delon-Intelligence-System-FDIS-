@@ -2,6 +2,9 @@
 FDIS Visualization Engine
 Generates Plotly chart JSON data for frontend rendering.
 """
+from cProfile import label
+
+from plotly import colors
 import plotly.graph_objects as go
 import plotly.express as px
 import json
@@ -57,7 +60,7 @@ def chart_team_radar(team_id):
         min(data['avg_shots'] / 25, 1),
         data['avg_pass_accuracy'] / 100,
         min(data['avg_xg'] / 3, 1),
-        min(data['avg_tackles'] / 30, 1),
+        min(data['avg_tackles_total'] / 30, 1),
         min(data['avg_interceptions'] / 20, 1),
         min(data['avg_corners'] / 12, 1),
     ]
@@ -159,6 +162,11 @@ def chart_team_trend_lines(team_id):
 
 # ─── Match Charts ─────────────────────────────────────────────────
 
+import json
+import plotly
+import plotly.graph_objects as go
+from app.engine.statistics import get_match_analysis
+
 def chart_match_comparison(match_id):
     """Horizontal bar chart comparing two teams' stats in a match."""
     analysis = get_match_analysis(match_id)
@@ -202,6 +210,7 @@ def chart_match_comparison(match_id):
 )
     fig.update_yaxes(autorange='reversed')
     return _fig_to_json(fig)
+
 
 
 # ─── Player Charts ────────────────────────────────────────────────
@@ -300,12 +309,12 @@ def chart_comparison_radar(team_id_1, team_id_2):
     vals1 = [
         s1['win_rate'], s1['avg_possession'], s1['avg_pass_accuracy'],
         normalize(s1['avg_shots'], 25), normalize(s1['avg_xg'], 3) * 100 / 100 * s1['avg_xg'] / 3 * 100 if s1['avg_xg'] else 0,
-        normalize(s1['avg_tackles'], 30), s1['clean_sheet_rate'],
+        normalize(s1['avg_tackles_total'], 30), s1['clean_sheet_rate'],
     ]
     vals2 = [
         s2['win_rate'], s2['avg_possession'], s2['avg_pass_accuracy'],
         normalize(s2['avg_shots'], 25), normalize(s2['avg_xg'], 3) * 100 / 100 * s2['avg_xg'] / 3 * 100 if s2['avg_xg'] else 0,
-        normalize(s2['avg_tackles'], 30), s2['clean_sheet_rate'],
+        normalize(s2['avg_tackles_total'], 30), s2['clean_sheet_rate'],
     ]
 
     vals1.append(vals1[0])
@@ -400,7 +409,6 @@ def chart_win_rate_donut():
     total_wins = sum(t['wins'] for t in table)
     total_draws = sum(t['draws'] for t in table)
     total_losses = sum(t['losses'] for t in table)
-
     # Since each match produces one win+loss or two draws, normalize
     fig = go.Figure(data=[go.Pie(
         labels=['Home Wins', 'Away Wins', 'Draws'],
@@ -408,7 +416,7 @@ def chart_win_rate_donut():
         hole=0.55,
         marker=dict(colors=[COLORS['primary'], COLORS['danger'], COLORS['warning']]),
         textinfo='label+percent',
-        textfont=dict(size=13),
+        textfont=dict(size=15),
     )])
     fig.update_layout(
         **CHART_LAYOUT,
@@ -416,42 +424,113 @@ def chart_win_rate_donut():
         showlegend=True,
     )
     return _fig_to_json(fig)
-
 def chart_match_donut_stats(match_id):
-    """Generate multiple donut charts for match stats."""
+    """
+    Generate donut charts for circle metrics.
+    Each metric creates 2 charts: home and away.
+    """
     analysis = get_match_analysis(match_id)
-    if not analysis or 'metrics' not in analysis:
+    if not analysis:
         return None
 
-    metrics = analysis['metrics']
-    match_info = analysis['match']
+    metrics = analysis.get('circle_metrics', [])
+    match = analysis.get('match', {})
+
+    home_team = match.get('home_team', {}).get('name', 'Home')
+    away_team = match.get('away_team', {}).get('name', 'Away')
 
     charts = {}
 
-    for key, metric in metrics.items():
-        home = metric['home']
-        away = metric['away']
+    for i, metric in enumerate(metrics):
         label = metric['label']
+        labels = metric['labels']
 
-        # Hindari error jika 0 semua
-        if home == 0 and away == 0:
-            continue
-
-        fig = go.Figure(data=[go.Pie(
-            labels=[match_info['home_team']['name'], match_info['away_team']['name']],
-            values=[home, away],
-            hole=0.55,
-            textinfo='percent+value',
-            marker=dict(colors=[COLORS['primary'], COLORS['danger']])
+        home_values = metric['home_values']
+        away_values = metric['away_values']
+        
+        home_text = metric.get('home_text', [])
+        away_text = metric.get('away_text', [])
+       # HOME CHART
+        # HOME CHART
+        fig_home = go.Figure(data=[go.Pie(
+            labels=labels,
+            values=home_values,
+            hole=0.45, # Diperbesar sedikit agar ruang di tengah lebih lega
+            marker_colors=["#3d08fd", "#fa0909", '#77868D'],
+            
+            # 1. Menggunakan texttemplate agar format lebih rapi, misal: "551 (88.9%)"
+            texttemplate="<b>%{value}</b><br>(%{percent})", 
+            
+            # 2. Mengatur posisi teks. 'auto' akan mendorong teks keluar jika slice terlalu kecil
+            textposition="auto", 
+            
+            textfont=dict(size=12, color='white'),
+            showlegend=True
         )])
 
-        fig.update_layout(
-            **CHART_LAYOUT,
-            title=dict(text=label, font=dict(size=14)),
-            showlegend=True,
-            height=300
-        )
+        fig_home.update_layout(
+            meta=dict(metric_name=label),
+            height=280,
+            width=340,
+            margin=dict(t=55, b=35, l=20, r=95),
+            
+            # 3. Opsional: Menambahkan Anotasi di tengah Donut
+            # Jika Anda ingin memindahkan teks "551/620" ke tengah chart, gunakan ini
+            annotations=[dict(
+                text=f"{home_values[0]}/{sum(home_values)}", # Contoh: 551/620
+                x=0.5, y=0.5, 
+                font=dict(size=14, color='white'), 
+                showarrow=False
+            )],
 
-        charts[key] = fig.to_dict()
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font=dict(color='white')
+        )
+        charts[f"chart_{i}_home"] = {
+            "figure": fig_home.to_dict(),
+            "label": label,
+            }
+        # AWAY CHART
+        # AWAY CHART
+        fig_away = go.Figure(data=[go.Pie(
+            labels=labels,
+            values=away_values,
+            hole=0.45, # Diperbesar sedikit agar ruang di tengah lebih lega
+            marker_colors=["#9b59b6", "#fa0909", '#77868D'],
+            
+            # 1. Menggunakan texttemplate agar format lebih rapi, misal: "551 (88.9%)"
+            texttemplate="<b>%{value}</b><br>(%{percent})", 
+            
+            # 2. Mengatur posisi teks. 'auto' akan mendorong teks keluar jika slice terlalu kecil
+            textposition="auto", 
+            
+            textfont=dict(size=12, color='white'),
+            showlegend=True
+        )])
+
+        fig_away.update_layout(
+            meta=dict(metric_name=label), # Menyimpan nama metrik di metadata layout untuk referensi frontend
+            height=280,
+            width=340,
+            margin=dict(t=55, b=35, l=20, r=95),
+            
+            # 3. Opsional: Menambahkan Anotasi di tengah Donut
+            # Jika Anda ingin memindahkan teks "551/620" ke tengah chart, gunakan ini
+            annotations=[dict(
+                text=f"{away_values[0]}/{sum(away_values)}", # Contoh: 551/620
+                x=0.5, y=0.5, 
+                font=dict(size=14, color='white'), 
+                showarrow=False
+            )],
+
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font=dict(color='white')
+        )
+        charts[f"chart_{i}_away"] = {
+            "figure": fig_away.to_dict(),
+            "label": label,
+        }
 
     return charts

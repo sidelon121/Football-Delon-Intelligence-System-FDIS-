@@ -1,66 +1,103 @@
 {% extends "base.html" %}
-{% block title %}Compare{% endblock %}
+{% block title %}Compare - FDIS{% endblock %}
 {% block header_title %}Comparison Tool{% endblock %}
 
 {% block content %}
 <div class="page-header">
     <h2>⚖️ Comparison Tool</h2>
-    <p class="subtitle">Compare teams or players side by side</p>
+    <p class="subtitle">Side-by-side analysis of clubs/players</p>
 </div>
 
-<!-- Comparison Selector -->
-<div class="card mb-3">
+<div class="card mb-4">
     <div class="card-header">
         <span class="card-title">Select Items to Compare</span>
     </div>
-    <div class="grid-4" style="align-items:end;">
+
+    <div class="grid-4" style="align-items:end; padding: 20px;">
         <div class="form-group">
             <label class="form-label">Compare Type</label>
             <select id="compare-type" class="form-select" onchange="updateCompareOptions()">
-                <option value="team">Teams</option>
-                <option value="player">Players</option>
+                <option value="team" {% if request.args.get('type')=='team' %}selected{% endif %}>Teams</option>
+                <option value="player" {% if request.args.get('type')=='player' %}selected{% endif %}>Players</option>
             </select>
         </div>
+
         <div class="form-group">
-            <label class="form-label">First</label>
+            <label class="form-label">First Selection</label>
             <select id="compare-id1" class="form-select">
                 <option value="">Select...</option>
-                {% for team in teams %}
-                <option value="{{ team.id }}">{{ team.name }}</option>
-                {% endfor %}
             </select>
         </div>
+
         <div class="form-group">
-            <label class="form-label">Second</label>
+            <label class="form-label">Second Selection</label>
             <select id="compare-id2" class="form-select">
                 <option value="">Select...</option>
-                {% for team in teams %}
-                <option value="{{ team.id }}">{{ team.name }}</option>
-                {% endfor %}
             </select>
         </div>
+
         <div class="form-group">
-            <button class="btn btn-accent w-full" onclick="loadComparison()" style="margin-top:4px;">
-                ⚖️ Compare
+            <button class="btn btn-primary w-full" onclick="goCompare()">
+                ⚖️ Run Comparison
             </button>
         </div>
     </div>
 </div>
 
-<!-- Comparison Results -->
-<div id="comparison-result">
+{% if data and data.metrics %}
+<div class="grid-2 mb-4">
     <div class="card">
-        <div class="empty-state">
-            <div class="empty-icon">⚖️</div>
-            <h3>Select Two Items to Compare</h3>
-            <p>Choose a comparison type and select two teams or players to see a detailed side-by-side analysis.</p>
+        <div class="card-header">
+            <span class="card-title">📊 Visual Comparison</span>
+        </div>
+        <div id="compare-chart" style="min-height:400px;"></div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">📝 Metrics</span>
+            <a href="/api/export/pdf/compare?type={{ request.args.get('type') }}&id1={{ request.args.get('id1') }}&id2={{ request.args.get('id2') }}" 
+               class="btn btn-outline btn-sm">📄 PDF</a>
+        </div>
+        
+        <div class="comparison-stats">
+            <div class="comp-header">
+                <div>{{ data.meta.name1 }}</div>
+                <div class="text-center">Metric</div>
+                <div class="text-right">{{ data.meta.name2 }}</div>
+            </div>
+
+            {% for m in data.metrics %}
+            <div class="comp-row">
+                <div class="{% if m.t1|float > m.t2|float %}winner{% endif %}">{{ m.t1 }}</div>
+                <div class="text-center">{{ m.label }}</div>
+                <div class="text-right {% if m.t2|float > m.t1|float %}winner{% endif %}">{{ m.t2 }}</div>
+            </div>
+            {% endfor %}
         </div>
     </div>
 </div>
-{% endblock %}
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">📝 Compare Summary</span>
+    </div>
+    <div style="padding:15px;">
+        {% for p in ai_text.split("\n\n") %}
+            <p>{{ p }}</p>
+        {% endfor %}
+    </div>
+</div>
 
-{% block scripts %}
+{% elif request.args.get('id1') %}
+    <div class="alert alert-warning">
+        Data tidak ditemukan untuk perbandingan ini.
+    </div>
+{% endif %}
+
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
 <script>
+// Ambil data dari Flask dengan aman
 const teamsData = {{ teams | map(attribute='id') | list | tojson }};
 const teamsNames = {{ teams | map(attribute='name') | list | tojson }};
 const playersData = {{ players | map(attribute='id') | list | tojson }};
@@ -84,5 +121,92 @@ function updateCompareOptions() {
         });
     });
 }
+
+function goCompare() {
+    const type = document.getElementById('compare-type').value;
+    const id1 = document.getElementById('compare-id1').value;
+    const id2 = document.getElementById('compare-id2').value;
+
+    if (!id1 || !id2 || id1 === id2) {
+        alert("Pilih 2 item yang berbeda!");
+        return;
+    }
+    window.location.href = `/compare?type=${type}&id1=${id1}&id2=${id2}`;
+}
+
+// Jalankan fungsi ini saat halaman pertama kali dibuka agar dropdown terisi otomatis
+document.addEventListener('DOMContentLoaded', updateCompareOptions);
+
+function goCompare() {
+    const type = document.getElementById('compare-type').value;
+    const id1 = document.getElementById('compare-id1').value;
+    const id2 = document.getElementById('compare-id2').value;
+
+    if (!id1 || !id2 || id1 === id2) {
+        alert("Pilih 2 item berbeda!");
+        return;
+    }
+
+    window.location.href = `/compare?type=${type}&id1=${id1}&id2=${id2}`;
+}
+
+function renderChart() {
+    const raw = {{ data_json | safe }};
+    if (!raw || !raw.chart_data) return;
+
+    const isTeam = raw.chart_data.team1 !== undefined;
+
+    const trace1 = {
+        x: raw.chart_data.labels,
+        y: isTeam ? raw.chart_data.team1 : raw.chart_data.player1,
+        name: raw.meta.name1,
+        type: 'bar'
+    };
+
+    const trace2 = {
+        x: raw.chart_data.labels,
+        y: isTeam ? raw.chart_data.team2 : raw.chart_data.player2,
+        name: raw.meta.name2,
+        type: 'bar'
+    };
+
+    Plotly.newPlot('compare-chart', [trace1, trace2], {
+        barmode: 'group'
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    updateCompareOptions();
+    renderChart();
+});
+document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll(".chart-container").forEach(el => {
+        try {
+            const chartData = JSON.parse(el.dataset.chart);
+
+            if (chartData.data && chartData.layout) {
+                Plotly.newPlot(el, chartData.data, chartData.layout);
+            } else {
+                console.warn("Chart format salah:", chartData);
+            }
+
+        } catch (err) {
+            console.error("Chart error:", err);
+        }
+    });
+});
+
 </script>
+
+<style>
+    .winner { color: #4ade80; font-weight: bold; }
+    .text-center { text-align: center; }
+    .text-right { text-align: right; }
+    .comp-header, .comp-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        padding: 10px 0;
+        border-bottom: 1px solid #333;
+    }
+</style>
 {% endblock %}

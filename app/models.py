@@ -3,7 +3,43 @@ FDIS Database Models
 Football Data Intelligence System
 """
 from datetime import datetime, timezone
+from typing import final
+from flask_login import UserMixin
+from werkzeug.security import generate_password_hash, check_password_hash
 from app import db
+
+
+class User(db.Model, UserMixin):
+    """User model for authentication."""
+    __tablename__ = 'users'
+
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(255), nullable=True)  # Nullable for OAuth users
+    name = db.Column(db.String(100), nullable=True)
+    google_id = db.Column(db.String(100), unique=True, nullable=True)
+    github_id = db.Column(db.String(100), unique=True, nullable=True)
+    avatar_url = db.Column(db.String(255), nullable=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        if not self.password_hash:
+            return False
+        return check_password_hash(self.password_hash, password)
+
+    def __repr__(self):
+        return f'<User {self.email}>'
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'email': self.email,
+            'name': self.name,
+            'avatar_url': self.avatar_url
+        }
 
 
 class Team(db.Model):
@@ -94,6 +130,8 @@ class Match(db.Model):
     status = db.Column(db.String(20), default='completed')  # completed, scheduled, live
     api_fixture_id = db.Column(db.Integer, nullable=True)  # API-Football fixture id
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    home_goalscorers = db.Column(db.String(255),nullable=True)
+    away_goalscorers = db.Column(db.String(255), nullable=True)
 
     # Relationships
     match_stats = db.relationship('MatchStats', backref='match', lazy='dynamic', cascade='all, delete-orphan')
@@ -109,6 +147,8 @@ class Match(db.Model):
             'away_team': self.away_team.to_dict() if self.away_team else None,
             'home_goals': self.home_goals,
             'away_goals': self.away_goals,
+            'home_goalscorers': self.home_goalscorers,
+            'away_goalscorers': self.away_goalscorers,
             'date': self.date.isoformat() if self.date else None,
             'league': self.league,
             'season': self.season,
@@ -125,22 +165,46 @@ class MatchStats(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     match_id = db.Column(db.Integer, db.ForeignKey('matches.id'), nullable=False)
     team_id = db.Column(db.Integer, db.ForeignKey('teams.id'), nullable=False)
-
     # Core stats
     goals = db.Column(db.Integer, default=0)
+    home_goalscorers = db.Column(db.String(255), nullable=True)
+    away_goalscorers = db.Column(db.String(255), nullable=True)
     possession = db.Column(db.Float, default=0.0)  # percentage
     total_shots = db.Column(db.Integer, default=0)
     shots_on_target = db.Column(db.Integer, default=0)
     shots_off_target = db.Column(db.Integer, default=0)
     blocked_shots = db.Column(db.Integer, default=0)
+    shots_inside_box = db.Column(db.Integer, default=0)
+    shots_outside_box = db.Column(db.Integer, default=0)
+    big_chances_scored = db.Column(db.Integer, default=0)
+    big_chances_missed = db.Column(db.Integer, default=0)
+    dribbles_attempted = db.Column(db.Integer, default=0)
+    dribbles_succeeded = db.Column(db.Integer, default=0)
 
     # Passing
     total_passes = db.Column(db.Integer, default=0)
     pass_accuracy = db.Column(db.Float, default=0.0)  # percentage
     key_passes = db.Column(db.Integer, default=0)
+    passes_into_final_third = db.Column(db.Integer, default=0)
+    passes_final_third_success = db.Column(db.Integer, default=0)
+    passes_into_penalty_area = db.Column(db.Integer, default=0)
+    through_balls = db.Column(db.Integer, default=0)
+    throw_ins = db.Column(db.Integer, default=0)
+    final_third_entries = db.Column(db.Integer, default=0)
+    long_balls = db.Column(db.Integer, default=0)
+    long_balls_success = db.Column(db.Integer, default=0)
+    crosses = db.Column(db.Integer, default=0)
+    crosses_success = db.Column(db.Integer, default=0)
+    hit_woodwork = db.Column(db.Integer, default=0)
+
+
 
     # Defense
-    tackles = db.Column(db.Integer, default=0)
+    tackles_success = db.Column(db.Integer, default=0)
+    tackles_total = db.Column(db.Integer, default=0)
+    duels_won = db.Column(db.Integer, default=0)
+    duels_total = db.Column(db.Integer, default=0)
+    clearances = db.Column(db.Integer, default=0)
     interceptions = db.Column(db.Integer, default=0)
     blocks = db.Column(db.Integer, default=0)
 
@@ -177,11 +241,33 @@ class MatchStats(db.Model):
             'shots_on_target': self.shots_on_target,
             'shots_off_target': self.shots_off_target,
             'blocked_shots': self.blocked_shots,
+            'shots_inside_box': self.shots_inside_box, # Tambahkan ini
+            'shots_outside_box': self.shots_outside_box, # Tambahkan ini
+            'big_chances_scored': self.big_chances_scored, # Tambahkan ini
+            'big_chances_missed': self.big_chances_missed, # Tambahkan ini
+            'dribbles_attempted': self.dribbles_attempted, # Tambahkan ini
+            'dribbles_succeeded': self.dribbles_succeeded, # Tambahkan ini
             'total_passes': self.total_passes,
             'pass_accuracy': self.pass_accuracy,
+            'passes_into_final_third': self.passes_into_final_third, # Tambahkan ini
+            'passes_final_third_success': self.passes_final_third_success, # Tambahkan ini
+            'passes_into_penalty_area': self.passes_into_penalty_area, # Tambahkan ini
+            'through_balls': self.through_balls, # Tambahkan ini
+            'throw_ins': self.throw_ins, # Tambahkan ini
+            'final_third_entries': self.final_third_entries, # Tambahkan ini
+            'long_balls': self.long_balls, # Tambahkan ini
+            'long_balls_success': self.long_balls_success, # Tambahkan ini
+            'crosses': self.crosses, # Tambahkan ini
+            'crosses_success': self.crosses_success, # Tambahkan ini
+            'hit_woodwork': self.hit_woodwork, # Tambahkan ini
             'key_passes': self.key_passes,
-            'tackles': self.tackles,
+            'tackles_success': self.tackles,
+            'tackles_total': self.tackles_total,
+            'duels_won': self.duels_won,
+            'duels_total': self.duels_total,
+            'clerences': self.clerences,
             'interceptions': self.interceptions,
+            'blocks': self.blocks,
             'corners': self.corners,
             'fouls': self.fouls,
             'yellow_cards': self.yellow_cards,
@@ -190,7 +276,6 @@ class MatchStats(db.Model):
             'xg': self.xg,
             'goalkeeper_saves': self.goalkeeper_saves,
         }
-
 
 class PlayerStats(db.Model):
     """Player statistics for a specific match."""
@@ -289,3 +374,22 @@ class UploadHistory(db.Model):
             'status': self.status,
             'error_message': self.error_message,
         }
+
+class Goal(db.Model):
+    __tablename__ = 'goals'
+
+    id = db.Column(db.Integer, primary_key=True)
+    match_id = db.Column(db.Integer, db.ForeignKey('matches.id'), nullable=False)
+    player_id = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=False)
+    team_id = db.Column(db.Integer, db.ForeignKey('teams.id'), nullable=False)
+
+    minute = db.Column(db.Integer)  # opsional (menit gol)
+    is_own_goal = db.Column(db.Boolean, default=False)
+    is_penalty = db.Column(db.Boolean, default=False)
+
+    player = db.relationship('Player')
+    team = db.relationship('Team')
+    match = db.relationship('Match')
+
+    def __repr__(self):
+        return f'<Goal {self.player.name} in {self.match.home_team.name} vs {self.match.away_team.name}>'

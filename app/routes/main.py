@@ -72,7 +72,7 @@ def upload():
 # =========================
 @main_bp.route('/dashboard')
 def dashboard():
-    from app.engine.statistics import get_dashboard_summary, get_league_table
+    from app.engine.statistics import get_dashboard_summary, get_all_league_standings
     from app.engine.visualizations import (
         chart_goals_distribution,
         chart_points_bar,
@@ -85,7 +85,7 @@ def dashboard():
     if not summary:
         return render_template("dashboard.html", empty=True)
 
-    league_table = get_league_table()
+    league_standings = get_all_league_standings()
     teams = Team.query.order_by(Team.name).all()
 
     charts = {
@@ -97,20 +97,10 @@ def dashboard():
     return render_template(
         'dashboard.html',
         summary=summary,
-        league_table=league_table,
+        league_standings=league_standings,
         teams=teams,
         charts=charts
     )
-
-
-# =========================
-# TEAMS
-# =========================
-@main_bp.route('/teams')
-def teams():
-    teams = Team.query.order_by(Team.name).all()
-    return render_template('teams.html', teams=teams)
-
 
 @main_bp.route('/teams/<int:team_id>')
 def team_detail(team_id):
@@ -120,6 +110,7 @@ def team_detail(team_id):
         chart_team_form,
         chart_team_trend_lines
     )
+    from app.engine.ai_engine import generate_ai_team_analysis
     from app.engine.nlg import generate_team_analysis
 
     overview = get_team_overview(team_id)
@@ -127,20 +118,33 @@ def team_detail(team_id):
     if not overview:
         return render_template('404.html'), 404
 
+    # 🔥 CHARTS (INI YANG KURANG)
     charts = {
         'radar': chart_team_radar(team_id),
         'form': chart_team_form(team_id),
         'trends': chart_team_trend_lines(team_id),
     }
 
-    analysis_text = generate_team_analysis(team_id)
+    # 🔥 AI
+    analysis_text = generate_ai_team_analysis(overview)
+
+    # fallback kalau AI gagal
+    if not analysis_text:
+        analysis_text = generate_team_analysis(team_id)
 
     return render_template(
         'team.html',
         overview=overview,
-        charts=charts,
+        charts=charts,              # ✅ WAJIB ADA
         analysis_text=analysis_text
     )
+# =========================
+# TEAMS
+# =========================
+@main_bp.route('/teams')
+def teams():
+    teams = Team.query.order_by(Team.name).all()
+    return render_template('teams.html', teams=teams)
 
 
 # =========================
@@ -160,32 +164,41 @@ def matches():
 @main_bp.route('/matches/<int:match_id>')
 def match_detail(match_id):
     from app.engine.statistics import get_match_analysis
-    from app.engine.visualizations import chart_match_comparison
+    from app.engine.visualizations import chart_match_comparison, chart_match_donut_stats
     from app.engine.nlg import generate_match_summary
+    from app.engine.ai_engine import generate_ai_match_analysis
     from app.models import PlayerStats
+    import plotly
+    import json
 
-    analysis = get_match_analysis(match_id)
+    data = get_match_analysis(match_id)
 
-    if not analysis:
-        return render_template('404.html'), 404
-    from app.engine.visualizations import chart_match_donut_stats
+    if not data:
+        return "Match not found", 404
 
-    charts = chart_match_donut_stats(match_id)
-    summary_text = generate_match_summary(match_id)
+    # AI
+    summary_text = generate_ai_match_analysis(data)
+    if not summary_text:
+        summary_text = generate_match_summary(match_id)
 
-    player_stats = PlayerStats.query.filter_by(
-        match_id=match_id
-    ).all()
+    summary_text = summary_text.replace(". ", ".\n\n")
+
+    # 🔥 CHART WAJIB ADA DI SINI
+    donut_charts_dict = chart_match_donut_stats(match_id)
+
+    # Konversi ke String JSON yang aman menggunakan PlotlyJSONEncoder
+    charts_json = json.dumps(donut_charts_dict, cls=plotly.utils.PlotlyJSONEncoder) if donut_charts_dict else "{}"
+
+    player_stats = PlayerStats.query.filter_by(match_id=match_id).all()
 
     return render_template(
         'match.html',
-        analysis=analysis,
-        charts=charts,
         summary_text=summary_text,
+        match=data['match'],
+        data=data,
+        charts_json=charts_json,   # 🔥 INI YANG SEBELUMNYA HILANG
         player_stats=player_stats
     )
-
-
 # =========================
 # PLAYERS
 # =========================
@@ -198,10 +211,8 @@ def players():
 @main_bp.route('/players/<int:player_id>')
 def player_detail(player_id):
     from app.engine.statistics import get_player_overview
-    from app.engine.visualizations import (
-        chart_player_radar,
-        chart_player_rating_trend
-    )
+    from app.engine.visualizations import chart_player_radar
+    from app.engine.ai_engine import generate_ai_player_analysis
     from app.engine.nlg import generate_player_analysis
 
     overview = get_player_overview(player_id)
@@ -209,27 +220,77 @@ def player_detail(player_id):
     if not overview:
         return render_template('404.html'), 404
 
+    # 📊 CHART
     charts = {
-        'radar': chart_player_radar(player_id),
-        'rating_trend': chart_player_rating_trend(player_id),
+        'radar': chart_player_radar(player_id)
     }
 
-    analysis_text = generate_player_analysis(player_id)
+    analysis_text = generate_ai_player_analysis(overview)
+
+    if not analysis_text:
+        analysis_text = generate_player_analysis(player_id)
+    # 🔥 BIAR RAPI DI WEB
+    analysis_text = analysis_text.replace(". ", ".\n\n")
 
     return render_template(
         'player.html',
         overview=overview,
         charts=charts,
         analysis_text=analysis_text
-    )
-
-
+    )   
 # =========================
 # COMPARE
 # =========================
 @main_bp.route('/compare')
 def compare():
-    teams = Team.query.order_by(Team.name).all()
-    players = Player.query.order_by(Player.name).all()
+    from app.engine.statistics import get_team_comparison, get_player_comparison
+    from app.engine.ai_engine import generate_ai_comparison_analysis
 
-    return render_template('compare.html', teams=teams, players=players)
+    compare_type = request.args.get('type', 'team')
+    id1 = request.args.get('id1', type=int)
+    id2 = request.args.get('id2', type=int)
+
+    # 🔥 FIX: jangan langsung proses kalau kosong
+    if not id1 or not id2:
+        teams = Team.query.all()
+        players = Player.query.all()
+
+        return render_template(
+            'compare.html',
+            teams=teams,
+            players=players,
+            data=None,
+            ai_text=None
+        )
+
+    # 🔥 ambil data
+    if compare_type == "team":
+        data = get_team_comparison(id1, id2)
+    else:
+        data = get_player_comparison(id1, id2)
+
+    if not data:
+        return "Comparison data not found", 404
+
+    # Ensure template-safe meta payload even if comparison engine returns partial data.
+    meta = data.get("meta") if isinstance(data, dict) else None
+    if not isinstance(meta, dict):
+        meta = {}
+    data["meta"] = meta
+
+    if not meta.get("name1"):
+        obj1 = Team.query.get(id1) if compare_type == "team" else Player.query.get(id1)
+        meta["name1"] = obj1.name if obj1 else "Item 1"
+    if not meta.get("name2"):
+        obj2 = Team.query.get(id2) if compare_type == "team" else Player.query.get(id2)
+        meta["name2"] = obj2.name if obj2 else "Item 2"
+
+    ai_text = generate_ai_comparison_analysis(data, compare_type)
+
+    return render_template(
+        'compare.html',
+        teams=Team.query.all(),
+        players=Player.query.all(),
+        data=data,
+        ai_text=ai_text
+    )

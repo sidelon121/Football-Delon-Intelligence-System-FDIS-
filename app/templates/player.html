@@ -124,15 +124,36 @@
 <!-- Automated Analysis -->
 <div class="card">
     <div class="card-header">
-        <span class="card-title">📝 Automated Analysis</span>
-        <div class="flex gap-1">
-            <a href="/api/export/pdf/player/{{ overview.player.id }}" class="btn btn-outline btn-sm">📄 PDF</a>
-        </div>
+        <span class="card-title">📝 Player Analysis</span>
+        <a href="/api/export/pdf/player/{{ overview.player.id }}"
+            class="btn btn-outline btn-sm">
+            📄 Download PDF
+        </a>
     </div>
+
     <div class="analysis-text">
-        {% for paragraph in analysis_text.split('\n\n') %}
-        <p>{{ paragraph | safe }}</p>
-        {% endfor %}
+        <p style="white-space: pre-line;">
+            {{ analysis_text }}
+        </p>
     </div>
 </div>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll(".chart-container").forEach(el => {
+        try {
+            const chartData = JSON.parse(el.dataset.chart);
+
+            if (chartData.data && chartData.layout) {
+                Plotly.newPlot(el, chartData.data, chartData.layout);
+            } else {
+                console.warn("Chart format salah:", chartData);
+            }
+
+        } catch (err) {
+            console.error("Chart error:", err);
+        }
+    });
+});
+</script>
+
 {% endblock %}
