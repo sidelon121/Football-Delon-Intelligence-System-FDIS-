@@ -464,7 +464,7 @@ def chart_match_donut_stats(match_id):
             # 2. Mengatur posisi teks. 'auto' akan mendorong teks keluar jika slice terlalu kecil
             textposition="auto", 
             
-            textfont=dict(size=12, color='white'),
+            textfont=dict(size=10, color='white'),
             showlegend=True
         )])
 
@@ -479,7 +479,7 @@ def chart_match_donut_stats(match_id):
             annotations=[dict(
                 text=f"{home_values[0]}/{sum(home_values)}", # Contoh: 551/620
                 x=0.5, y=0.5, 
-                font=dict(size=14, color='white'), 
+                font=dict(size=11, color='white'), 
                 showarrow=False
             )],
 
@@ -505,7 +505,7 @@ def chart_match_donut_stats(match_id):
             # 2. Mengatur posisi teks. 'auto' akan mendorong teks keluar jika slice terlalu kecil
             textposition="auto", 
             
-            textfont=dict(size=12, color='white'),
+            textfont=dict(size=10, color='white'),
             showlegend=True
         )])
 
@@ -520,7 +520,7 @@ def chart_match_donut_stats(match_id):
             annotations=[dict(
                 text=f"{away_values[0]}/{sum(away_values)}", # Contoh: 551/620
                 x=0.5, y=0.5, 
-                font=dict(size=14, color='white'), 
+                font=dict(size=11, color='white'), 
                 showarrow=False
             )],
 

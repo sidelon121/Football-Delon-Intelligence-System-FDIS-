@@ -1,42 +1,81 @@
 import os
 import re
+import tempfile
 from fpdf import FPDF
 
+# 🔥 FIX: Biarkan Plotly (update_layout) yang menentukan ukuran asli, jangan dipaksa!
+def save_chart_as_image(fig):
+    temp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+    fig.write_image(temp.name) 
+    return temp.name
 
+# =======================================================
+# SAFE TEXT (ANTI ERROR FPDF)
+# =======================================================
+def safe_text(text):
+    if not text:
+        return ""
+    text = str(text)
+    text = text.replace("•", "-").replace("\u2022", "-").replace("\u25CF", "-")
+    text = text.replace("–", "-").replace("—", "-")
+    text = re.sub(r'[^\x00-\x7F]+', ' ', text)
+    text = re.sub(r'\s+', ' ', text)
+    return text.strip()
+
+# =======================================================
+# 🏆 ARSITEKTUR KELAS PDF
+# =======================================================
 class PDF(FPDF):
-
     def header(self):
         if self.page_no() == 1:
             self.set_font("Arial", "B", 16)
             self.cell(0, 10, "FOOTBALL DATA REPORT", ln=True, align="C")
-
             self.set_font("Arial", "", 10)
             self.cell(0, 5, "by SIDELON121", ln=True, align="C")
-
             self.ln(10)
+        self.ln(5)
 
-        self.ln(5)  # kasih jarak biar tidak nabrak
+    def watermark(self):
+        self.set_text_color(220, 220, 220)
+        self.set_font("Arial", "B", 50)
+        page_width = self.w
+        page_height = self.h
+        current_x = self.get_x()
+        current_y = self.get_y()
+
+        self.set_xy(0, page_height / 2)
+        self.cell(page_width, 10, "SIDELON121", align="C")
+
+        self.set_xy(current_x, current_y)
+        self.set_text_color(0, 0, 0)
+        
+        # 🔥 FIX: Kunci anti-font-leak! Wajib dikembalikan ke 10
+        self.set_font("Arial", "", 10) 
+
+    def add_page(self, *args, **kwargs):
+        super().add_page(*args, **kwargs)
+        self.watermark()
+
+    def section_header(self, title):
+        self.set_font("Arial", "B", 14)
+        self.set_text_color(102, 126, 234)
+        self.cell(0, 10, safe_text(title.upper()), ln=True)
+        self.set_draw_color(102, 126, 234)
+        self.line(self.get_x(), self.get_y(), self.get_x() + 190, self.get_y())
+        self.set_text_color(0, 0, 0)
+        self.ln(5)
+
     def section_title(self, title):
         self.ln(6)
-        self.set_font('Arial', 'B', 12)
-        self.cell(0, 8, title, ln=True)
+        self.set_font("Arial", "B", 12)
+        self.set_text_color(26, 26, 46)
+        self.cell(0, 8, safe_text(title), ln=True, align="L")
         self.ln(2)
-        
+
     def section_text(self, text):
         self.set_font('Arial', '', 10)
-        text = safe_text(text)
-
-        self.multi_cell(0, 6, text)
+        self.multi_cell(0, 6, safe_text(text))
         self.ln(2)
-
-    # ✅ BOX STAT
-    def stat_box(self, label, value):
-        self.set_font("Arial", "B", 10)
-        self.cell(60, 8, label, border=1)
-
-        self.set_font("Arial", "", 10)
-        self.cell(0, 8, str(value), border=1, ln=True)
-
 
     def stat_bar(self, label, home, away):
         total = home + away if (home + away) != 0 else 1
@@ -102,12 +141,12 @@ class PDF(FPDF):
 
         self.ln(5)
 
-    def draw_table(self, header, data, col_widths):
+
+    def draw_table(self, headers, rows, col_widths):
         self.set_font("Arial", "B", 9)
         self.set_fill_color(245, 245, 245)
-        
-        for i, h in enumerate(header):
-            self.cell(col_widths[i], 8, h, border=1, fill=True, align="C")
+        for i, h in enumerate(headers):
+            self.cell(col_widths[i], 8, str(h), border=1, fill=True, align="C")
         self.ln()
 
         self.set_font("Arial", "", 9)
@@ -117,68 +156,45 @@ class PDF(FPDF):
             self.ln()
         self.ln(5)
 
-    def section_header(self, title):
-        self.set_font("Arial", "B", 14)
-        self.set_text_color(102, 126, 234)
-        self.cell(0, 10, title.upper(), ln=True)
-        self.set_draw_color(102, 126, 234)
-        self.line(self.get_x(), self.get_y(), self.get_x() + 190, self.get_y())
-        self.set_text_color(0, 0, 0)
-        self.ln(5)
+    # 🔥 FIX: Fungsi canggih untuk merender AI teks agar tebal (**) tercetak otomatis dan stabil
+    def render_ai_analysis(self, text):
+        text = str(text).replace('•', '-').replace('\u2022', '-').replace('\u25CF', '-')
+        text = text.encode('latin-1', 'ignore').decode('latin-1')
 
-    def watermark(self):
-        self.set_text_color(220, 220, 220)
-        self.set_font("Arial", "B", 50)
+        clean_text = text.replace("\r", "")
+        analysis_lines = clean_text.split("\n")
 
-        # ambil ukuran halaman
-        page_width = self.w
-        page_height = self.h
+        for line in analysis_lines:
+            line = line.strip()
+            if not line:
+                self.ln(2)
+                continue
+            
+            is_bullet = line.startswith("-") or line.startswith("*")
+            is_header = line.startswith("**") and line.endswith("**") or line.endswith(":")
+            clean_line = line.replace("**", "")
 
-        # simpan posisi sekarang
-        current_x = self.get_x()
-        current_y = self.get_y()
+            if is_header:
+                self.ln(3)
+                self.set_font("Arial", "B", 11)
+                self.set_text_color(26, 26, 46)
+                self.multi_cell(0, 6, clean_line)
+            elif is_bullet:
+                self.set_font("Arial", "", 10)
+                self.set_text_color(50, 50, 50) 
+                self.set_x(15) 
+                self.multi_cell(0, 5, f"- {clean_line.lstrip('-* ').strip()}")
+            else:
+                self.set_font("Arial", "", 10)
+                self.set_text_color(50, 50, 50) 
+                self.set_x(10)
+                self.multi_cell(0, 5, clean_line)
+            self.ln(1)
 
-        # posisikan ke tengah halaman
-        self.set_xy(0, page_height / 2)
-
-        self.cell(page_width, 10, "SIDELON121", align="C")
-
-        # 🔥 KEMBALIKAN posisi biar tidak nabrak layout
-        self.set_xy(current_x, current_y)
-
-        # reset warna
-        self.set_text_color(0, 0, 0)
-    def rotate(self, angle, x=None, y=None):
-        if x is None:
-            x = self.x
-        if y is None:
-            y = self.y
-
-        self._out(f'q {angle} 0 0 {angle} {x} {y} cm')
-        
-    def add_page(self, *args, **kwargs):
-        super().add_page(*args, **kwargs)
-        self.watermark()
+    def image(self, name, x=None, y=None, w=0, h=0, type='', link=''):
+        super().image(name, x, y, w, h, type, link)
 
 def create_pdf():
     pdf = PDF()
     pdf.set_auto_page_break(auto=True, margin=15)
-    pdf.add_page()
-    pdf.stat_vs_bar
-
-    pdf.watermark() 
-    pdf.set_font('Arial', '', 10)
     return pdf
-
-
-# 🔥 SAFE TEXT (ANTI ERROR FPDF)
-def safe_text(text):
-    if not text:
-        return ""
-
-    text = str(text)
-    text = text.replace("–", "-").replace("—", "-")
-    text = re.sub(r'[^\x00-\x7F]+', ' ', text)
-    text = re.sub(r'\s+', ' ', text)
-
-    return text.strip()

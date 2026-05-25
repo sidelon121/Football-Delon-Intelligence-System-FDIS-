@@ -67,6 +67,7 @@ def export_match_pdf(match_id):
         return "Match not found", 404
 
     pdf = create_pdf()
+    pdf.add_page()
     match = data['match']
     metrics = data.get('metrics', {})
 
@@ -78,6 +79,7 @@ def export_match_pdf(match_id):
     pdf.set_font("Arial", "", 10)
     pdf.cell(0, 6, f"{match.get('league','-')} | {match.get('date','-')} | {match.get('venue','-')}", ln=True, align="C")
     pdf.ln(5)
+    
     # ⚽ SCORE & SCORERS
     pdf.set_font("Arial", "B", 24)
     pdf.cell(85, 15, home, align="R")
@@ -94,6 +96,7 @@ def export_match_pdf(match_id):
     pdf.cell(20, 5, "", align="C")
     pdf.cell(85, 5, f"{match['away_goalscorers'] or '-'}", ln=True, align="L")
     pdf.ln(15)
+    
     # 📊 STATS BARS
     pdf.section_title("Match Statistics")
     for key, m in metrics.items():
@@ -124,20 +127,6 @@ def export_match_pdf(match_id):
         pdf.set_font("Arial", "B", 11)
         pdf.cell(190, 6, safe_text(m["label"]), align="C")
 
-        # =========================
-        # TEAM NAMES
-        # =========================
-        pdf.set_font("Arial", "B", 8)
-
-        pdf.set_xy(40, y + 8)
-        pdf.cell(60, 4, safe_text(home), align="C")
-
-        pdf.set_xy(135, y + 8)
-        pdf.cell(60, 4, safe_text(away), align="C")
-
-        # =========================
-        # HOME CHART
-        # =========================
         fig_home = go.Figure(data=[go.Pie(
             labels=m["labels"],
             values=m["home_values"],
@@ -146,34 +135,38 @@ def export_match_pdf(match_id):
             textposition="auto", 
             texttemplate="<b>%{value}</b><br>(%{percent})", 
             textinfo='value+percent',
-            textfont=dict(size=30, color='black')
+            textfont=dict(size=14, color='black') # DIUBAH: Font diperkecil agar pas di kanvas 300
         )])
 
         fig_home.update_layout(
-            width=280,
-            height=240,
-            showlegend=True,
-            legend=dict(
-                x=1.0,
-                y=0.82,
-                font=dict(size=8)
-            ),
+            width=300,  # DIUBAH
+            height=300, # DIUBAH
+            showlegend=True,  # 1. NYALAKAN LEGEND
+                legend=dict(
+                    orientation="h",  # 2. Buat posisinya menyamping (horizontal)
+                    yanchor="top",
+                    y=-0.1,           # 3. Taruh di bawah grafik donat
+                    xanchor="center",
+                    x=0.5,
+                    font=dict(size=12, color="black") # Ukuran font legend
+                ),
             annotations=[dict(
-                text=f"{m['home_values'][0]}/{sum(m['home_values'])}", # Contoh: 551/620
+                text=f"{m['home_values'][0]}/{sum(m['home_values'])}", 
                 x=0.5, y=0.5, 
-                font=dict(size=30, color='black'), 
+                font=dict(size=16, color='black'), # DIUBAH: Font tengah diperkecil
                 showarrow=False
             )],
-            margin=dict(t=5, b=5, l=5, r=55),
+            margin=dict(t=5, b=5, l=5, r=5), # DIUBAH: Margin diperketat karena kanvas mengecil
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)'
         )
 
         home_img = save_chart_as_image(fig_home)
-        pdf.image(home_img, x=15, y=y + 7, w=60)
+        # Jika ingin grafiknya ikut mengecil di PDF, gunakan w=45 atau w=50
+        pdf.image(home_img, x=35, y=y + 10, w=50) 
 
         # =========================
-        # AWAY CHART
+        # AWAY CHART (Lakukan hal yang sama)
         # =========================
         fig_away = go.Figure(data=[go.Pie(
             labels=m["labels"],
@@ -183,54 +176,69 @@ def export_match_pdf(match_id):
             textposition="auto", 
             texttemplate="<b>%{value}</b><br>(%{percent})", 
             textinfo='value+percent',
-            textfont=dict(size=30, color='black')
+            textfont=dict(size=14, color='black') # DIUBAH
         )])
 
         fig_away.update_layout(
-            width=280,
-            height=240,
-            showlegend=True,
-            legend=dict(
-                x=1.0,
-                y=0.82,
-                font=dict(size=8)
-            ),
+            width=300,  # DIUBAH
+            height=300, # DIUBAH
+            showlegend=True,  # 1. NYALAKAN LEGEND
+                legend=dict(
+                    orientation="h",  # 2. Buat posisinya menyamping (horizontal)
+                    yanchor="top",
+                    y=-0.1,           # 3. Taruh di bawah grafik donat
+                    xanchor="center",
+                    x=0.5,
+                    font=dict(size=12, color="black") # Ukuran font legend
+                ),
             annotations=[dict(
-                text=f"{m['away_values'][0]}/{sum(m['away_values']  )}", # Contoh: 551/620
+                text=f"{m['away_values'][0]}/{sum(m['away_values'])}", 
                 x=0.5, y=0.5, 
-                font=dict(size=30, color='black'), 
+                font=dict(size=16, color='black'), # DIUBAH
                 showarrow=False
             )],
-            margin=dict(t=5, b=5, l=5, r=55),
+            margin=dict(t=5, b=5, l=5, r=5), # DIUBAH
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)'
         )
 
         away_img = save_chart_as_image(fig_away)
-        pdf.image(away_img, x=113, y=y + 7, w=60)
+        pdf.image(away_img, x=130, y=y + 10, w=50) # DIUBAH: x disesuaikan agar tetap simetris, w=45
 
-        # =========================
-        # NEXT CARD POSITION
-        # =========================
-        y += 40
 
+        y += 55
     # =========================
     # MOVE CURSOR AFTER CHARTS
     # =========================
     pdf.set_y(y + 4)
         
-    # 📝 ANALYSIS
+    # ==========================================
+    # 📝 SEKSI ANALISIS & INSIGHTS (VERSI CERDAS)
+    # ==========================================
     summary = generate_ai_match_analysis(data)
-    if summary:
-        pdf.section_header("Analysis & Insights")
-        for p in summary.split("\n\n"):
-            pdf.section_text(p)
     
+    if summary:
+        if pdf.get_y() > 200:
+            pdf.add_page()
+        else:
+            pdf.ln(10) 
+            
+        pdf.set_font("Arial", "B", 14)
+        pdf.set_text_color(26, 26, 46)
+        pdf.cell(190, 8, "ANALYSIS & INSIGHTS", ln=True, align="L")
+        pdf.set_draw_color(180, 180, 180)
+        pdf.line(pdf.get_x(), pdf.get_y(), pdf.get_x() + 190, pdf.get_y())
+        pdf.ln(5)
+
+        # Cukup gunakan 1 baris ini, semua font besar & error tertangani otomatis!
+        pdf.render_ai_analysis(summary)
+                
     temp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
     pdf.output(temp.name)
 
     filename = f"Match_{home}_vs_{away}.pdf".replace(" ", "_")
     return send_file(temp.name, as_attachment=True, download_name=filename)
+
 
 
 @api_bp.route('/export/pdf/player/<int:player_id>')
