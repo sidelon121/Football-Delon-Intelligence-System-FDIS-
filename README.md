@@ -1,4 +1,4 @@
-# Football Data Intelligence System (FDIS)
+# Football DelonIntelligence System (FDIS)
 
 FDIS is a Flask-based web application for ingesting football match and player data, generating interactive visualizations, and producing automated data-driven analysis.
 
